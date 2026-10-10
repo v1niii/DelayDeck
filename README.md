@@ -2,7 +2,7 @@
 
 A small RTMP relay that sits between OBS and your streaming platform and holds the stream back by a delay you can change at any time, with a web control panel (works as an OBS dock) and a customizable on-stream overlay.
 
-- One ~1.8 MB executable, no runtime dependencies, a few MB of RAM plus the buffer itself
+- One ~2 MB executable, no runtime dependencies, a few MB of RAM plus the buffer itself
 - Updates itself from GitHub Releases
 - Any delay from 0s up to a configurable maximum (10 min by default), changed live
 - Twitch, YouTube, Kick or any custom `rtmp://` / `rtmps://` server, or a local Test mode that sends nothing
