@@ -1,0 +1,36 @@
+[package]
+name = "delaydeck"
+version = "0.1.0"
+edition = "2024"
+description = "Lightweight RTMP stream delay relay with a web control panel and OBS overlay"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "delaydeck"
+path = "src/main.rs"
+
+[dependencies]
+axum = { version = "0.8.9", default-features = false, features = ["http1", "json", "query", "tokio"] }
+bytes = "1.12.1"
+futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
+native-tls = "0.2.18"
+rml_rtmp = "0.8.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+sha2 = "0.9"
+tokio = { version = "1.53.2", features = ["rt", "macros", "net", "io-util", "time", "sync", "signal"] }
+tokio-native-tls = "0.3.1"
+ureq = { version = "3.4.2", default-features = false, features = ["native-tls"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[build-dependencies]
+winresource = { version = "0.1.31", default-features = false }

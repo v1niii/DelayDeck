@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DelayDeck Overlay</title>
+<style>
+:root {
+  --accent: #8b5cf6;
+  --live: #ff4757;
+  --warn: #ffb020;
+  --sans: Inter, "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --mono: "JetBrains Mono", "Cascadia Mono", "Cascadia Code", "SF Mono", Consolas, monospace;
+}
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+#ov {
+  position: absolute;
+  -webkit-font-smoothing: antialiased;
+}
+#ov.anim { transition: opacity .45s ease; }
+#ov.out { opacity: 0; }
+#ov.dim { opacity: .35; }
+
+.card { position: relative; color: #fff; font-family: var(--sans); white-space: nowrap; }
+.val { font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.lbl { font-family: var(--mono); font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+.prog { display: block; overflow: hidden; background: rgba(255, 255, 255, .12); }
+.prog i { display: block; height: 100%; width: 0; background: var(--accent); }
+.anim .prog i { transition: width .3s linear; }
+.state-building .prog i { background: var(--warn); }
+.dot { flex: none; position: relative; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); }
+.dot::after {
+  content: ""; position: absolute; inset: -5px; border-radius: 50%;
+  border: 2px solid var(--accent); opacity: 0; animation: ring 2.2s ease-out infinite;
+}
+.state-live .dot { background: var(--live); }
+.state-live .dot::after { border-color: var(--live); }
+.state-building .dot { background: var(--warn); animation: blink 1s ease-in-out infinite; }
+.state-building .dot::after { display: none; }
+@keyframes ring { 0% { transform: scale(.5); opacity: .8; } 100% { transform: scale(1.7); opacity: 0; } }
+@keyframes blink { 50% { opacity: .3; } }
+.clock { display: none; }
+.hide { display: none !important; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 12px 22px 12px 17px; border-radius: 999px; overflow: hidden;
+  background: rgba(10, 10, 16, .86);
+  border: 1px solid rgba(255, 255, 255, .09);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+.pill .lbl { font-size: 14px; color: rgba(255, 255, 255, .62); }
+.pill .val { font-size: 28px; font-weight: 800; line-height: 1; }
+.pill .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, .06); }
+
+.minimal { display: inline-flex; align-items: center; gap: 10px; text-shadow: 0 2px 8px rgba(0, 0, 0, .75), 0 0 2px rgba(0, 0, 0, .9); }
+.minimal .dot { display: none; }
+.minimal .clock { display: block; width: 32px; height: 32px; color: var(--accent); filter: drop-shadow(0 2px 5px rgba(0, 0, 0, .6)); }
+.minimal.state-live .clock { color: var(--live); }
+.minimal.state-building .clock { color: var(--warn); }
+.minimal .val { font-size: 36px; font-weight: 800; line-height: 1; }
+.minimal .lbl { font-size: 13px; opacity: .9; }
+.minimal .prog { width: 64px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .25); box-shadow: 0 1px 4px rgba(0, 0, 0, .5); }
+
+.bar {
+  width: 300px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px 12px;
+  padding: 15px 18px 16px 16px; border-radius: 6px;
+  background: linear-gradient(180deg, rgba(16, 16, 24, .93), rgba(10, 10, 16, .93));
+  border: 1px solid rgba(255, 255, 255, .08); border-left: 4px solid var(--accent);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .4);
+}
+.bar.state-live { border-left-color: var(--live); }
+.bar.state-building { border-left-color: var(--warn); }
+.bar .lbl { font-size: 13px; color: rgba(255, 255, 255, .66); }
+.bar .val { font-size: 30px; font-weight: 800; line-height: 1; justify-self: end; }
+.bar .prog { grid-column: 1 / -1; height: 4px; border-radius: 2px; }
+.bar.state-delayed .prog i { width: 100% !important; background: linear-gradient(90deg, var(--accent), rgba(255, 255, 255, .85), var(--accent)); background-size: 200% 100%; animation: sheen 3s linear infinite; }
+@keyframes sheen { to { background-position: -200% 0; } }
+
+.badge {
+  width: 150px; display: flex; flex-direction: column; align-items: center; gap: 9px;
+  padding: 20px 14px 16px; border-radius: 8px;
+  background: rgba(10, 10, 16, .88);
+  border: 1px solid rgba(255, 255, 255, .08); border-top: 4px solid var(--accent);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .4);
+}
+.badge.state-live { border-top-color: var(--live); }
+.badge.state-building { border-top-color: var(--warn); }
+.badge .dot { position: absolute; top: 11px; right: 11px; width: 8px; height: 8px; }
+.badge .val { order: 1; font-size: 46px; font-weight: 800; line-height: 1; }
+.badge .lbl { order: 2; font-size: 12px; color: rgba(255, 255, 255, .62); letter-spacing: .26em; }
+.badge .prog { order: 3; width: 100%; height: 4px; border-radius: 2px; }
+.badge.state-live .val { font-size: 34px; letter-spacing: .02em; }
+</style>
+</head>
+<body>
+<div id="ov" class="out"></div>
+<script>
+"use strict";
+const DEFAULTS = {
+  style: "pill", position: "top-right", accent: "#8b5cf6", label: "DELAY", live_label: "LIVE",
+  show_when_live: false, show_progress: true, scale: 1, margin: 48,
+};
+const q = new URLSearchParams(location.search);
+const preview = q.has("preview");
+const ov = document.getElementById("ov");
+let cfg = null, st = null, built = "";
+
+function opts() {
+  const o = Object.assign({}, DEFAULTS, cfg || {});
+  const pick = (keys, f) => keys.forEach(k => { const v = q.get(k); if (v !== null && v !== "") f(v); });
+  const bool = v => v === "1" || v === "true" || v === "yes";
+  pick(["style"], v => o.style = v);
+  pick(["pos", "position"], v => o.position = v);
+  pick(["accent"], v => o.accent = v.startsWith("#") ? v : "#" + v);
+  pick(["scale"], v => o.scale = parseFloat(v) || o.scale);
+  pick(["margin"], v => o.margin = parseFloat(v) || 0);
+  pick(["label"], v => o.label = v);
+  pick(["live"], v => o.live_label = v);
+  pick(["showlive"], v => o.show_when_live = bool(v));
+  pick(["progress"], v => o.show_progress = bool(v));
+  if (!["pill", "minimal", "bar", "badge"].includes(o.style)) o.style = "pill";
+  if (!/^(top|bottom)-(left|center|right)$/.test(o.position)) o.position = "top-right";
+  if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(o.accent)) o.accent = DEFAULTS.accent;
+  return o;
+}
+
+function fmt(s) {
+  const t = Math.round(s * 10) / 10;
+  if (t < 60) return (t % 1 && t < 10 ? t.toFixed(1) : Math.round(t)) + "s";
+  const total = Math.round(t);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function view() {
+  const d = st && st.delay;
+  if (!d || d.phase === "idle") {
+    if (!preview) return null;
+    const t = d ? d.target : 30;
+    return t > 0 ? { kind: "delayed", value: t } : { kind: "live" };
+  }
+  if (d.phase === "building") return { kind: "building", value: d.need, current: d.delay, progress: d.need ? d.have / d.need : 0 };
+  if (d.delay < 0.05) return { kind: "live" };
+  return { kind: "delayed", value: d.delay };
+}
+
+const CLOCK = '<svg class="clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9.5 2.5h5"/></svg>';
+
+function render() {
+  const o = opts();
+  const v = view();
+  let visible = !!v, dim = false;
+  if (v && v.kind === "live" && !o.show_when_live) {
+    if (preview) dim = true; else visible = false;
+  }
+  ov.classList.toggle("out", !visible);
+  ov.classList.toggle("dim", dim);
+  if (!v) return;
+
+  if (built !== o.style) {
+    ov.innerHTML = `<div class="card">${CLOCK}<span class="dot"></span><span class="lbl"></span><span class="val"></span><span class="prog"><i></i></span></div>`;
+    built = o.style;
+  }
+  const card = ov.firstElementChild;
+  card.className = `card ${o.style} state-${v.kind}`;
+  ov.style.setProperty("--accent", o.accent);
+
+  const lbl = card.querySelector(".lbl"), val = card.querySelector(".val"), prog = card.querySelector(".prog");
+  if (v.kind === "live") {
+    const badge = o.style === "badge";
+    val.textContent = badge ? o.live_label : "";
+    lbl.textContent = badge ? "" : o.live_label;
+  } else {
+    lbl.textContent = o.label;
+    val.textContent = fmt(v.kind === "building" && !o.show_progress ? v.current : v.value);
+  }
+  val.classList.toggle("hide", !val.textContent);
+  lbl.classList.toggle("hide", !lbl.textContent);
+
+  const showProg = (v.kind === "building" && o.show_progress) || (o.style === "bar" && v.kind === "delayed");
+  prog.classList.toggle("hide", !showProg);
+  if (v.kind === "building") prog.firstElementChild.style.width = Math.min(100, v.progress * 100) + "%";
+
+  place(o);
+  if (!ov.classList.contains("anim")) requestAnimationFrame(() => requestAnimationFrame(() => ov.classList.add("anim")));
+}
+
+function place(o) {
+  const [vert, horiz] = o.position.split("-");
+  const m = o.margin + "px";
+  ov.style.top = ov.style.bottom = ov.style.left = ov.style.right = "auto";
+  ov.style[vert] = m;
+  if (horiz === "center") {
+    ov.style.left = "50%";
+    ov.style.transform = `translateX(-50%) scale(${o.scale})`;
+  } else {
+    ov.style[horiz] = m;
+    ov.style.transform = `scale(${o.scale})`;
+  }
+  ov.style.transformOrigin = `${vert} ${horiz}`;
+}
+
+function connect() {
+  const es = new EventSource("/api/events?topics=status,config");
+  es.addEventListener("config", e => { cfg = JSON.parse(e.data).config.overlay; render(); });
+  es.addEventListener("status", e => { st = JSON.parse(e.data); render(); });
+}
+connect();
+</script>
+</body>
+</html>

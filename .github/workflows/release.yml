@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      DELAYDECK_UPDATE_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set version from tag
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Tag ${{ github.ref_name }} must look like v1.2.3" }
+          $toml = Get-Content Cargo.toml -Raw
+          $toml = [regex]::new('(?m)^version = "[^"]+"').Replace($toml, "version = `"$version`"", 1)
+          [System.IO.File]::WriteAllText("$PWD/Cargo.toml", $toml)
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install Rust
+        run: rustup update stable --no-self-update && rustup default stable
+
+      - name: Test
+        run: cargo test
+
+      - name: Package
+        shell: pwsh
+        run: ./package.ps1
+
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" `
+            "dist/DelayDeck-$env:VERSION-windows-x64.zip" `
+            "dist/DelayDeck-$env:VERSION-windows-x64.exe" `
+            "dist/latest.json" `
+            --title "DelayDeck $env:VERSION" `
+            --generate-notes
